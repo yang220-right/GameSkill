@@ -216,17 +216,17 @@ public class CustomWindomsEditor : EditorWindow{
     private float currentTime = 0f; // 当前时间
     private float minTime = 0f; // 最小时间
     private float maxTime = 10f; // 最大时间
-    private float timeScale = 1f; // 时间缩放
     private Vector2 scrollPosition; // 滚动位置
     private bool isDragging = false; // 是否正在拖动指针
 
-    #region time
+    #region Timeline
 
     private void DrawTime(){
         DrawControls();
         DrawTimeline();
         HandleEvents();
     }
+
     private void DrawControls(){
         // 时间范围控制
         EditorGUILayout.BeginHorizontal(GUILayout.Width(2));
@@ -235,18 +235,13 @@ public class CustomWindomsEditor : EditorWindow{
         GUILayout.Label("Max Time:", GUILayout.Width(60));
         maxTime = EditorGUILayout.FloatField(maxTime);
         GUILayout.Label("Current Time:", GUILayout.Width(60));
+        if (currentTime > maxTime)
+            currentTime = maxTime;
         currentTime = EditorGUILayout.FloatField(currentTime);
         EditorGUILayout.EndHorizontal();
-        // 当前时间和缩放
-        // GUILayout.Label($"CurrentTime: {currentTime:F2}");
-        // currentTime = EditorGUILayout.Slider("Current Time", currentTime, minTime, maxTime);
-        // timeScale = EditorGUILayout.Slider("Time Scale", timeScale, 0.1f, 5f);
     }
 
     private void DrawTimeline(){
-        // 开始滚动视图
-        // scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(100));
-
         // 获取时间轴的布局区域
         Rect timelineRect = GUILayoutUtility.GetRect(1000, 20); // 固定高度，宽度根据内容扩展
 
@@ -256,7 +251,7 @@ public class CustomWindomsEditor : EditorWindow{
         // 动态计算刻度间隔
         float totalDuration = maxTime - minTime;
         float pixelsPerSecond = timelineRect.width / totalDuration;
-        float majorInterval =CalculateMajorInterval(pixelsPerSecond); // 主刻度间隔（秒）
+        float majorInterval = CalculateMajorInterval(pixelsPerSecond); // 主刻度间隔（秒）
         float minorInterval = majorInterval / 5f; // 次刻度间隔（秒）
         // 绘制刻度线
         int currentIndex = 0;
@@ -267,17 +262,16 @@ public class CustomWindomsEditor : EditorWindow{
 
             if (isMajor){
                 // 绘制时间标签
-                Rect labelRect = new Rect(timelineRect.x + x - 5 , timelineRect.y + 15, 40, 20);
+                Rect labelRect = new Rect(timelineRect.x + x - 5, timelineRect.y + 15, 40, 20);
                 GUI.Label(labelRect, t.ToString("F1"));
             }
+
             ++currentIndex;
         }
 
         // 绘制当前时间指针
         float pointerX = ((currentTime - minTime) / totalDuration) * timelineRect.width;
         EditorGUI.DrawRect(new Rect(timelineRect.x + pointerX, timelineRect.y, 2, 1080), Color.red);
-
-        // GUILayout.EndScrollView();
     }
 
     /// <summary>
@@ -287,17 +281,16 @@ public class CustomWindomsEditor : EditorWindow{
         EditorGUI.DrawRect(new Rect(timelineRect.x + x, timelineRect.y + timelineRect.height - height, 1, height),
             color);
     }
-    private float CalculateMajorInterval(float pixelsPerSecond)
-    {
+
+    private float CalculateMajorInterval(float pixelsPerSecond){
         // 动态调整主刻度间隔，确保标签不重叠
-        float[] possibleIntervals = { 1f, 2f, 5f, 10f, 30f, 60f };
+        float[] possibleIntervals ={ 1f, 2f, 5f, 10f, 30f, 60f };
         foreach (float interval in possibleIntervals)
-        {
             if (interval * pixelsPerSecond > 50) // 间隔至少50像素
                 return interval;
-        }
         return possibleIntervals[possibleIntervals.Length - 1];
     }
+
     /// <summary>
     /// 鼠标事件
     /// </summary>
