@@ -8,7 +8,11 @@ public class OpenSkillEditor : Editor
     [MenuItem("Skill/Open")]
     public static void OpenSkill(){
         EditorWindow window = EditorWindow.GetWindow<CustomWindomsEditor>();
-        window.position = new Rect(50f, 50f, 800f, 600f);
+        window.position = new Rect(300f, 300f, 800f, 600f);
         window.Show();
+    }
+    [MenuItem("Skill/OpenTime")]
+    public static void OpenTime(){
+        PrecisionTimelineWindow.ShowWindow();
     }
 }

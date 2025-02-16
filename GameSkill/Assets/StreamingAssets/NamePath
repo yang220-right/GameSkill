@@ -1,3 +1,10 @@
 {
-    "DatasList": []
+    "DatasList": [
+        {
+            "Key": "GamePrefab",
+            "FullPath": "Assets/Resources/Test/New Prefab.prefab",
+            "Path": "Test/",
+            "Name": "New Prefab"
+        }
+    ]
 }
