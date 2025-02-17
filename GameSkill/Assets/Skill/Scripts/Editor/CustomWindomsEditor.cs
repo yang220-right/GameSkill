@@ -6,8 +6,16 @@ using UnityEngine;
 /// <summary>
 /// 自定义界面
 /// </summary>
+public class ExtraData{
+    public string Name;
+    public Vector2 Position;
+    public float Length;
+    public float BeginFrame;
+    public float EndFrame;
+}
+
 public class CustomWindomsEditor : EditorWindow{
-    private const string saveFileName = "NamePath"; //保存的文件名称
+    private const string SaveFileName = "NamePath"; //保存的文件名称
     bool isChanged = false; //是否改变过
     private bool isClickExit = false;
 
@@ -16,7 +24,11 @@ public class CustomWindomsEditor : EditorWindow{
     private List<NamePath> namePathList = new List<NamePath>();
     private Dictionary<string, string> pathKeep = new();
 
+    private List<ExtraData> extraLayouts = new List<ExtraData>();
+
     private const string NodePrefab = "GamePrefab";
+    private const int OneTrackHeight = 20;//一个轨道的高度
+    private const int TrackCloseTop = 40;//轨道里顶部高度
 
     private GameObject selectedObject; // 选择的对象
 
@@ -24,17 +36,18 @@ public class CustomWindomsEditor : EditorWindow{
         fullPathList.Clear();
         tempPathList.Clear();
         namePathList.Clear();
+        extraLayouts.Clear();
         pathKeep.Clear();
         titleContent = new GUIContent("Skill");
         //加载路径
-        if (JsonTools.ReadJson<NamePathWrapper>(saveFileName) != null){
-            namePathList = JsonTools.ReadJson<NamePathWrapper>(saveFileName).DatasList;
+        if (JsonTools.ReadJson<NamePathWrapper>(SaveFileName) != null){
+            namePathList = JsonTools.ReadJson<NamePathWrapper>(SaveFileName).DatasList;
             foreach (var namePath in namePathList){
                 fullPathList.Add(namePath.Key);
                 pathKeep.Add(namePath.Key, namePath.FullPath);
             }
 
-            if (!string.IsNullOrEmpty(saveFileName)){
+            if (!string.IsNullOrEmpty(SaveFileName)){
                 var nodePrefabIndex = -1;
                 nodePrefabIndex = fullPathList.FindIndex(d => d == NodePrefab);
                 if (nodePrefabIndex != -1){
@@ -55,6 +68,8 @@ public class CustomWindomsEditor : EditorWindow{
         tempPathList.Clear();
         namePathList.Clear();
         pathKeep.Clear();
+        extraLayouts.Clear();
+
         isChanged = false;
         isClickExit = false;
     }
@@ -87,6 +102,7 @@ public class CustomWindomsEditor : EditorWindow{
         Exit();
         SaveButton();
         LoadObj();
+        AddAttack();
         GUILayout.EndVertical();
         GUILayout.EndVertical();
         //end 左半部分
@@ -98,6 +114,7 @@ public class CustomWindomsEditor : EditorWindow{
         //begin 右半部分
         GUILayout.BeginVertical(GUILayout.Width(2));
         DrawTime();
+        DrawExtra();
         GUILayout.EndVertical();
         //end 右半部分
         GUILayout.EndHorizontal();
@@ -131,6 +148,18 @@ public class CustomWindomsEditor : EditorWindow{
         }
     }
 
+    private void AddAttack(){
+        if (GUILayout.Button("+", GUILayout.Height(FixedHeight), GUILayout.Width(Fixedwidth))){
+            extraLayouts.Add(new ExtraData(){
+                Name = "攻击",
+                Position = new Vector2(0, extraLayouts.Count * OneTrackHeight + TrackCloseTop),
+                Length = OneGrid,
+                BeginFrame = 0,
+                EndFrame = OneGrid,
+            });
+        }
+    }
+
     /// <summary>
     /// 记录数据
     /// </summary>
@@ -142,7 +171,7 @@ public class CustomWindomsEditor : EditorWindow{
     /// 保存数据
     /// </summary>
     private void Save(){
-        JsonTools.SaveJson(new NamePathWrapper(){ DatasList = namePathList }, saveFileName);
+        JsonTools.SaveJson(new NamePathWrapper(){ DatasList = namePathList }, SaveFileName);
     }
 
     private void RecordAndSave(){
@@ -218,13 +247,14 @@ public class CustomWindomsEditor : EditorWindow{
     private float maxTime = 10f; // 最大时间
     private Vector2 scrollPosition; // 滚动位置
     private bool isDragging = false; // 是否正在拖动指针
+    private const int OneGrid = 20;//一刻度为20像素
 
     #region Timeline
 
     private void DrawTime(){
         DrawControls();
         DrawTimeline();
-        HandleEvents();
+        HandleEvents(ref currentTime, minTime, maxTime);
     }
 
     private void DrawControls(){
@@ -257,7 +287,7 @@ public class CustomWindomsEditor : EditorWindow{
         int currentIndex = 0;
         for (float t = minTime; t <= maxTime; t += minorInterval){
             bool isMajor = currentIndex % 5 == 0; // 判断是否主刻度
-            float x = ((t - minTime) / totalDuration) * timelineRect.width;
+            float x = ((t - minTime) / totalDuration) * timelineRect.width;//x = 20 基本为20 所以20单位为一个
             DrawTick(timelineRect, x, isMajor ? 15 : 10, isMajor ? Color.white : Color.gray);
 
             if (isMajor){
@@ -272,6 +302,9 @@ public class CustomWindomsEditor : EditorWindow{
         // 绘制当前时间指针
         float pointerX = ((currentTime - minTime) / totalDuration) * timelineRect.width;
         EditorGUI.DrawRect(new Rect(timelineRect.x + pointerX, timelineRect.y, 2, 1080), Color.red);
+        if (trackDragging){
+            EditorGUI.DrawRect(new Rect(300, 22, 2, 1080), Color.green);
+        }
     }
 
     /// <summary>
@@ -294,7 +327,7 @@ public class CustomWindomsEditor : EditorWindow{
     /// <summary>
     /// 鼠标事件
     /// </summary>
-    private void HandleEvents(){
+    private void HandleEvents(ref float ct, float minTime, float maxTime){
         Event evt = Event.current;
         Rect timelineRect = GUILayoutUtility.GetLastRect();
 
@@ -310,10 +343,63 @@ public class CustomWindomsEditor : EditorWindow{
 
         if (isDragging && evt.type == EventType.MouseDrag){
             float clickX = evt.mousePosition.x - timelineRect.x;
-            currentTime = minTime + (clickX / timelineRect.width) * (maxTime - minTime);
-            currentTime = Mathf.Clamp(currentTime, minTime, maxTime);
+            ct = minTime + (clickX / timelineRect.width) * (maxTime - minTime);
+            ct = Mathf.Clamp(currentTime, minTime, maxTime);
             Repaint();
         }
+    }
+
+    #endregion
+
+    #region extra
+
+    private float testCurrentTime = 0;
+    int selectIndex = -1;
+    private bool trackDragging = false;
+
+    public void DrawExtra(){
+        Event e = Event.current;
+
+        Rect timelineRect = GUILayoutUtility.GetLastRect();
+        GUILayout.BeginVertical();
+        float totalDuration = maxTime - minTime;
+        float pointerX = ((testCurrentTime - minTime) / totalDuration) * timelineRect.width;
+        GUILayout.Label("",GUILayout.Height(20));
+        
+        var textColor = new GUIStyle();
+        textColor.normal.textColor = Color.black;
+        textColor.alignment = TextAnchor.MiddleCenter;
+        
+        for (int i = 0; i < extraLayouts.Count; i++){
+            var extraLayout = extraLayouts[i];
+            
+            var rect = new Rect(timelineRect.x + extraLayout.Position.x + pointerX, timelineRect.y + extraLayout.Position.y,
+                extraLayout.Length, 20);
+            EditorGUI.DrawRect(rect
+                , Color.yellow);
+            GUI.Label(rect, extraLayout.Name,textColor);
+            if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
+            {
+                trackDragging = true;
+                // isDragging = true;
+                selectIndex = i;
+            }
+            if (e.type == EventType.MouseUp){
+                trackDragging = false;
+                // isDragging = false;
+                selectIndex = -1;
+            }
+            if (e.type == EventType.MouseDrag && trackDragging && selectIndex == i)
+            {
+                extraLayouts[i].Position.x += e.delta.x;
+                EditorGUI.DrawRect(new Rect(300, 22, 2, 1080), Color.green);
+                // extraLayouts[i].Position.x = Mathf.Clamp(extraLayouts[i].Position.x,minTime,maxTime);
+                e.Use(); // 标记事件已使用，避免影响其他 UI
+            }
+        }
+
+        GUILayout.EndVertical();
+        Repaint();
     }
 
     #endregion

@@ -13,6 +13,6 @@ public class OpenSkillEditor : Editor
     }
     [MenuItem("Skill/OpenTime")]
     public static void OpenTime(){
-        PrecisionTimelineWindow.ShowWindow();
+        DraggableLabelWindow.ShowWindow();
     }
 }
